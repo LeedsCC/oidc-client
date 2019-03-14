@@ -1,4 +1,4 @@
-# oidc-client: OpenId-Connect Provider QEWD-Up MicroService
+# oidc-client: OpenId-Connect Client QEWD-Up MicroService
  
 Rob Tweed <rtweed@mgateway.com>  
 14 March 2019, M/Gateway Developments Ltd [http://www.mgateway.com](http://www.mgateway.com)  
