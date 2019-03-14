@@ -1,0 +1,14 @@
+[
+  {
+    "uri": "/auth/redirect",
+    "method": "GET",
+    "handler": "getRedirect",
+    "authenticate": false
+  },
+  {
+    "uri": "/auth/token",
+    "method": "GET",
+    "handler": "oidc_callback",
+    "authenticate": false
+  }
+]
