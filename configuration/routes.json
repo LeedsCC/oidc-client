@@ -10,5 +10,10 @@
     "method": "GET",
     "handler": "oidc_callback",
     "authenticate": false
+  },
+  {
+    "uri": "/auth/logout",
+    "method": "GET",
+    "handler": "logout"
   }
 ]
