@@ -24,7 +24,7 @@
  |  limitations under the License.                                          |
  ----------------------------------------------------------------------------
 
-  15 March 2019
+  9 April 2019
 
 */
 
@@ -33,6 +33,19 @@ var request = require('request');
 module.exports = function(args, finished) {
 
   var oidc_provider = this.oidc_client.oidc_provider;
+
+  // Some OIDC Providers don't specify an end session endpoint
+  // in which case just redirect to the OIDC provider again
+
+  if (!oidc_provider.urls.end_session_endpoint) {
+    // redirect to login endpoint instead
+    args.session.authenticated = false;
+    return finished({
+      redirectURL: this.oidc_client.getRedirectURL()
+    });
+  }
+
+
   var orchestrator = this.oidc_client.orchestrator;
   var redirectUri = orchestrator.host + orchestrator.urls.post_logout_redirect_uri;
   var endSessionEndpoint = oidc_provider.host + oidc_provider.urls.end_session_endpoint;

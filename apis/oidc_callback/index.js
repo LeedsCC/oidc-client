@@ -24,13 +24,14 @@
  |  limitations under the License.                                          |
  ----------------------------------------------------------------------------
 
-  14 March 2019
+  8 April 2019
 
 */
 
 // Handler for OIDC Callback URL: /auth/token
 
 var jwt = require('jwt-simple');
+var uuid = require('uuid/v4');
 
 var errorCallback;
 
@@ -51,6 +52,12 @@ module.exports = function(args, finished) {
   }
 
   var orchestrator = this.oidc_client.orchestrator;
+  if (!orchestrator.urls) {
+    orchestrator.urls = {
+      index_url: '/index.html',
+       callback_url: '/api/auth/token'
+    }
+  }
 
   var indexUrl = orchestrator.urls.index_url || '/index.html';
   var setCookie = orchestrator.set_cookie;
@@ -74,7 +81,8 @@ module.exports = function(args, finished) {
     cookieName = 'JSESSIONID';
   }
 
-  var callbackURL = this.oidc_client.callback_url;
+  var callbackURL = orchestrator.urls.callback_url || '/api/auth/token';
+  callbackURL = orchestrator.host + callbackURL;
 
   this.oidc_client.client.authorizationCallback(callbackURL, args.req.query)
     .then(function (tokenSet) {
@@ -84,10 +92,16 @@ module.exports = function(args, finished) {
       var session = args.session;
       session.authenticated = true;
       var verify_jwt = jwt.decode(tokenSet.id_token, null, true);
-      if (verify_jwt.nhsNumber) {
-        session.nhsNumber = verify_jwt.nhsNumber;
+      if (!verify_jwt.nhs_number) {
+        return finished({
+          error: 'The OIDC Provider id_token did not contain an NHS Number'
+        });
       }
+
+      session.nhsNumber = verify_jwt.nhs_number.split(' ').join('');
       session.email = verify_jwt.email;
+
+      //console.log('verify_jwt: ' + JSON.stringify(verify_jwt, null, 2));
 
       if (tokenSet.refresh_expires_in) {
         session.timeout = tokenSet.refresh_expires_in;
@@ -96,14 +110,10 @@ module.exports = function(args, finished) {
         session.timeout = verify_jwt.exp - verify_jwt.iat;
       }
 
-      session.uid = tokenSet.session_state;
+      session.role = 'phrUser';
+      session.uid = tokenSet.session_state || uuid();
       session.openid = verify_jwt;
       session.openid.id_token = tokenSet.id_token;
-
-      //console.log('verify_jwt = ' + JSON.stringify(verify_jwt, null, 2));
-
-      // possibly use verify_jwt.sub as a key for a global or session record
-      //  could use session and give it the same timeout as jwt
 
       finished({
         ok: true,

@@ -24,7 +24,7 @@
  |  limitations under the License.                                          |
  ----------------------------------------------------------------------------
 
-  14 March 2019
+  25 March 2019
 
 */
 
@@ -52,7 +52,17 @@ module.exports = function(args, finished) {
   //  or the JWT was invalid or expired, so tell PulseTile to redirect to OIDC server
 
   args.session.authenticated = false;
-  finished({
-    redirectURL: this.oidc_client.getRedirectURL()
-  });
+  if (!this.oidc_client.isReady) {
+    var _this = this;
+    this.on('oidc_client_ready', function() {
+      finished({
+        redirectURL: _this.oidc_client.getRedirectURL()
+      });
+    });
+  }
+  else {
+    finished({
+      redirectURL: this.oidc_client.getRedirectURL()
+    });
+  }
 };

@@ -24,7 +24,7 @@
  |  limitations under the License.                                          |
  ----------------------------------------------------------------------------
 
-  14 March 2019
+  29 March 2019
 
 
   This module is loaded by QEWD-Up when a QEWD Worker starts
@@ -37,8 +37,43 @@
 
 */
 
+var fs = require('fs');
+var jose = require('node-jose');
 const Issuer = require('openid-client').Issuer;
 var oidc_config = require('/opt/qewd/mapped/configuration/oidc.json');
+
+function configureClient(issuer, keystore) {
+
+  var oidc_provider = oidc_config.oidc_provider;
+  var clientObj = {
+    client_id: oidc_provider.client_id,
+    client_secret: oidc_provider.client_secret,
+    token_endpoint_auth_method: oidc_provider.token_endpoint_auth_method || 'client_secret_basic'
+  };
+  if (oidc_provider.token_endpoint_auth_method) {
+    var alg = oidc_provider.token_endpoint_auth_signing_alg || 'RS512';
+    clientObj.token_endpoint_auth_signing_alg = alg;
+    clientObj.token_endpoint_auth_signing_alg_values_supported = oidc_provider.token_endpoint_auth_signing_alg_values_supported || [alg];
+    clientObj.id_token_signed_response_alg = oidc_provider.id_token_signed_response_alg || alg;
+  }
+
+  this.oidc_client.client = new issuer.Client(clientObj, keystore);
+
+  var client = this.oidc_client.client;
+  this.oidc_client.getRedirectURL = function(scope) {
+    scope = scope || oidc_provider.scope.login;
+    var authorizeQuery = {
+      redirect_uri: oidc_config.orchestrator.host + oidc_config.orchestrator.urls.callback_url,
+      scope: scope
+    };
+    if (oidc_provider.authorize_additional_query_string_values) {
+      for (var name in oidc_provider.authorize_additional_query_string_values) {
+        authorizeQuery[name] = oidc_provider.authorize_additional_query_string_values[name];
+      }
+    }
+    return client.authorizationUrl(authorizeQuery);
+  };
+}
 
 module.exports = function() {
 
@@ -47,9 +82,9 @@ module.exports = function() {
   this.oidc_client = oidc_config;
   var oidc_provider = oidc_config.oidc_provider;
 
-  Issuer.defaultHttpOptions = {
-    rejectUnauthorized: oidc_provider.rejectUnauthorized || true
-  };
+  if (oidc_provider.defaultHttpOptions) {
+    Issuer.defaultHttpOptions = oidc_provider.defaultHttpOptions;
+  }
 
   this.oidc_client.issuer = new Issuer({
     issuer: oidc_provider.host + oidc_provider.urls.issuer,
@@ -61,18 +96,22 @@ module.exports = function() {
   });
   var issuer = this.oidc_client.issuer;
 
-  this.oidc_client.client = new issuer.Client({
-    client_id: oidc_provider.client_id,
-    client_secret: oidc_provider.client_secret
-  });
-
-  var client = this.oidc_client.client;
-  this.oidc_client.getRedirectURL = function(scope) {
-    scope = scope || oidc_provider.scope.login;
-    return client.authorizationUrl({
-      redirect_uri: oidc_config.orchestrator.host + oidc_config.orchestrator.urls.callback_url,
-      scope: scope,
+  if (oidc_provider.token_endpoint_auth_method && oidc_provider.token_endpoint_auth_method === 'private_key_jwt') {
+    var pem_file = oidc_provider.private_key_file_path;
+    var pem_data = fs.readFileSync(pem_file);
+    var keystore = jose.JWK.createKeyStore();
+    var _this = this;
+    this.oidc_client.isReady = false;
+    keystore.add(pem_data, 'pem').
+      then(function(result) {
+        console.log(JSON.stringify(keystore.all(), null, 2));
+        configureClient.call(_this, issuer, keystore);
+        _this.oidc_client.isReady = true;
+        _this.emit('oidc_client_ready');
     });
-  };
-  this.oidc_client.callback_url = oidc_config.orchestrator.host + oidc_config.orchestrator.urls.callback_url;
+  }
+  else {
+    configureClient.call(this, issuer);
+    this.oidc_client.isReady = true;
+  }
 };

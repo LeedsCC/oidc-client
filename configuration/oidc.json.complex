@@ -2,7 +2,7 @@
   "oidc_provider": {
     "host": "http://piserver-4:8080",
     "urls": {
-      "issuer": "/openid",
+      "issuer": "",
       "authorization_endpoint": "/openid/auth",
       "token_endpoint": "/openid/token",
       "userinfo_endpoint": "/openid/me",
@@ -16,14 +16,19 @@
     "scope": {
       "login": "openid"
     },
-    "authorize_additional_query_string_values": {
-      "prompt": "login"
-    },
-    "logout_approach": "client",
     "defaultHttpOptions": {
       "rejectUnauthorized": true,
       "timeout": 5000
     },
+    "token_endpoint_auth_method": "private_key_jwt",
+    "token_endpoint_auth_signing_alg": "RS512",
+    "token_endpoint_auth_signing_alg_values_supported": [
+      "RS512",
+      "RS256"
+    ],
+    "id_token_signed_response_alg": "RS512",
+    "private_key_file_path": "/opt/qewd/mapped/auth_service/private_key.pem",
+    "logout_approach": "client"
   },
   "orchestrator": {
     "host": "http://piserver-2:8080",
