@@ -50,7 +50,6 @@ module.exports = function(args, finished) {
 
   // either no JWT authorisation header was present at all,
   //  or the JWT was invalid or expired, so tell PulseTile to redirect to OIDC server
-
   args.session.authenticated = false;
   if (!this.oidc_client.isReady) {
     var _this = this;

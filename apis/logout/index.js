@@ -30,9 +30,8 @@
 
 var request = require('request');
 
-module.exports = function(args, finished) {
-
-  var oidc_provider = this.oidc_client.oidc_provider;
+function completeRequest(args, oidc_client, finished) {
+  var oidc_provider = oidc_client.oidc_provider;
 
   // Some OIDC Providers don't specify an end session endpoint
   // in which case just redirect to the OIDC provider again
@@ -41,12 +40,12 @@ module.exports = function(args, finished) {
     // redirect to login endpoint instead
     args.session.authenticated = false;
     return finished({
-      redirectURL: this.oidc_client.getRedirectURL()
+      redirectURL: oidc_client.getRedirectURL()
     });
   }
 
 
-  var orchestrator = this.oidc_client.orchestrator;
+  var orchestrator = oidc_client.orchestrator;
   var redirectUri = orchestrator.host + orchestrator.urls.post_logout_redirect_uri;
   var endSessionEndpoint = oidc_provider.host + oidc_provider.urls.end_session_endpoint;
 
@@ -89,5 +88,18 @@ module.exports = function(args, finished) {
     finished({
       ok: false
     });
+  }
+}
+
+module.exports = function(args, finished) {
+
+  if (!this.oidc_client.isReady) {
+    var _this = this;
+
+    _this.oidc_client.on('oidc_client_ready', function () {
+      completeRequest(args, _this.oidc_client, finished);
+    })
+  } else {
+    completeRequest(args, this.oidc_client, finished);
   }
 };
