@@ -54,6 +54,7 @@ module.exports = function(args, finished) {
   if (!this.oidc_client.isReady) {
     var _this = this;
     this.on('oidc_client_ready', function() {
+      
       finished({
         redirectURL: _this.oidc_client.getRedirectURL()
       });

@@ -130,7 +130,7 @@ module.exports = function(args, finished) {
   if (!this.oidc_client.isReady) {
     var _this = this;
 
-    _this.oidc_client.on('oidc_client_ready', function () {
+    _this.on('oidc_client_ready', function () {
       completeRequest(args, _this.oidc_client, finished);
     })
   } else {
