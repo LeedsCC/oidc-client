@@ -41,7 +41,7 @@ process.on('unhandledRejection', function(reason, p){
   errorCallback({error: reason});
 });
 
-module.exports = function(args, finished) {
+function completeRequest(args, oidc_client, finished) {
 
   if (args.req.query.error) {
     var error = args.req.query.error;
@@ -51,7 +51,7 @@ module.exports = function(args, finished) {
     return finished({error: error});
   }
 
-  var orchestrator = this.oidc_client.orchestrator;
+  var orchestrator = oidc_client.orchestrator;
   if (!orchestrator.urls) {
     orchestrator.urls = {
       index_url: '/index.html',
@@ -84,7 +84,7 @@ module.exports = function(args, finished) {
   var callbackURL = orchestrator.urls.callback_url || '/api/auth/token';
   callbackURL = orchestrator.host + callbackURL;
 
-  this.oidc_client.client.authorizationCallback(callbackURL, args.req.query)
+  oidc_client.client.authorizationCallback(callbackURL, args.req.query)
     .then(function (tokenSet) {
 
       //console.log('\nTokenSet: ' + JSON.stringify(tokenSet));
@@ -92,6 +92,7 @@ module.exports = function(args, finished) {
       var session = args.session;
       session.authenticated = true;
       var verify_jwt = jwt.decode(tokenSet.id_token, null, true);
+
       if (!verify_jwt.nhs_number) {
         return finished({
           error: 'The OIDC Provider id_token did not contain an NHS Number'
@@ -122,4 +123,17 @@ module.exports = function(args, finished) {
         cookieName: cookieName
       });
   });
+}
+
+module.exports = function(args, finished) {
+
+  if (!this.oidc_client.isReady) {
+    var _this = this;
+
+    _this.on('oidc_client_ready', function () {
+      completeRequest(args, _this.oidc_client, finished);
+    })
+  } else {
+    completeRequest(args, this.oidc_client, finished);
+  }
 };
