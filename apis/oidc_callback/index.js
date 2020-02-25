@@ -102,12 +102,14 @@ function completeRequest(args, oidc_client, finished) {
       session.nhsNumber = verify_jwt.nhs_number.split(' ').join('');
       session.email = verify_jwt.email;
 
-      //console.log('verify_jwt: ' + JSON.stringify(verify_jwt, null, 2));
-
-      if (tokenSet.refresh_expires_in) {
+      if (oidc_client.client_config && oidc_client.client_config.timeout) {
+        
+        session.timeout = oidc_client.client_config.timeout;
+      } else if (tokenSet.refresh_expires_in) {
+        
         session.timeout = tokenSet.refresh_expires_in;
-      }
-      else {
+      } else {
+        
         session.timeout = verify_jwt.exp - verify_jwt.iat;
       }
 
