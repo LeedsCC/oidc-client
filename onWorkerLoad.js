@@ -37,6 +37,8 @@
 
 */
 
+const { logger } = require('./logger');
+
 var fs = require('fs');
 var jose = require('node-jose');
 const Issuer = require('openid-client').Issuer;
@@ -76,42 +78,46 @@ function configureClient(issuer, keystore) {
 }
 
 module.exports = function() {
+  try {
 
-  console.log('OIDC Client initialising in QEWD Worker Process');
+    console.log('OIDC Client initialising in QEWD Worker Process');
 
-  this.oidc_client = oidc_config;
-  var oidc_provider = oidc_config.oidc_provider;
+    this.oidc_client = oidc_config;
+    var oidc_provider = oidc_config.oidc_provider;
 
-  if (oidc_provider.defaultHttpOptions) {
-    Issuer.defaultHttpOptions = oidc_provider.defaultHttpOptions;
-  }
+    if (oidc_provider.defaultHttpOptions) {
+      Issuer.defaultHttpOptions = oidc_provider.defaultHttpOptions;
+    }
 
-  this.oidc_client.issuer = new Issuer({
-    issuer: oidc_provider.host + oidc_provider.urls.issuer,
-    authorization_endpoint: oidc_provider.host + oidc_provider.urls.authorization_endpoint,
-    token_endpoint: oidc_provider.host + oidc_provider.urls.token_endpoint,
-    userinfo_endpoint: oidc_provider.host + oidc_provider.urls.userinfo_endpoint,
-    introspection_endpoint: oidc_provider.host + oidc_provider.urls.introspection_endpoint,
-    jwks_uri: oidc_provider.host + oidc_provider.urls.jwks_endpoint,
-  });
-  var issuer = this.oidc_client.issuer;
-
-  if (oidc_provider.token_endpoint_auth_method && oidc_provider.token_endpoint_auth_method === 'private_key_jwt') {
-    var pem_file = oidc_provider.private_key_file_path;
-    var pem_data = fs.readFileSync(pem_file);
-    var keystore = jose.JWK.createKeyStore();
-    var _this = this;
-    this.oidc_client.isReady = false;
-    keystore.add(pem_data, 'pem').
-      then(function(result) {
-        console.log(JSON.stringify(keystore.all(), null, 2));
-        configureClient.call(_this, issuer, keystore);
-        _this.oidc_client.isReady = true;
-        _this.emit('oidc_client_ready');
+    this.oidc_client.issuer = new Issuer({
+      issuer: oidc_provider.host + oidc_provider.urls.issuer,
+      authorization_endpoint: oidc_provider.host + oidc_provider.urls.authorization_endpoint,
+      token_endpoint: oidc_provider.host + oidc_provider.urls.token_endpoint,
+      userinfo_endpoint: oidc_provider.host + oidc_provider.urls.userinfo_endpoint,
+      introspection_endpoint: oidc_provider.host + oidc_provider.urls.introspection_endpoint,
+      jwks_uri: oidc_provider.host + oidc_provider.urls.jwks_endpoint,
     });
-  }
-  else {
-    configureClient.call(this, issuer);
-    this.oidc_client.isReady = true;
+    var issuer = this.oidc_client.issuer;
+
+    if (oidc_provider.token_endpoint_auth_method && oidc_provider.token_endpoint_auth_method === 'private_key_jwt') {
+      var pem_file = oidc_provider.private_key_file_path;
+      var pem_data = fs.readFileSync(pem_file);
+      var keystore = jose.JWK.createKeyStore();
+      var _this = this;
+      this.oidc_client.isReady = false;
+      keystore.add(pem_data, 'pem').
+        then(function(result) {
+          console.log(JSON.stringify(keystore.all(), null, 2));
+          configureClient.call(_this, issuer, keystore);
+          _this.oidc_client.isReady = true;
+          _this.emit('oidc_client_ready');
+      });
+    }
+    else {
+      configureClient.call(this, issuer);
+      this.oidc_client.isReady = true;
+    }
+  } catch (error) {
+    logger.error("", error)
   }
 };

@@ -32,14 +32,7 @@
 
 var jwt = require('jwt-simple');
 var uuid = require('uuid/v4');
-
-var errorCallback;
-
-process.on('unhandledRejection', function(reason, p){
-  console.log("Possibly Unhandled Rejection at: Promise ", p, " reason: ", reason);
-  // application specific logging here
-  errorCallback({error: reason});
-});
+const { logger, loginLogger } = require('../../logger');
 
 function completeRequest(args, oidc_client, finished) {
 
@@ -118,6 +111,8 @@ function completeRequest(args, oidc_client, finished) {
       session.openid = verify_jwt;
       session.openid.id_token = tokenSet.id_token;
 
+      loginLogger.info({ message: `new login - ${new Date()}` })
+
       finished({
         ok: true,
         oidc_redirect: indexUrl,
@@ -128,14 +123,17 @@ function completeRequest(args, oidc_client, finished) {
 }
 
 module.exports = function(args, finished) {
+  try {
+    if (!this.oidc_client.isReady) {
+      var _this = this;
 
-  if (!this.oidc_client.isReady) {
-    var _this = this;
-
-    _this.on('oidc_client_ready', function () {
-      completeRequest(args, _this.oidc_client, finished);
-    })
-  } else {
-    completeRequest(args, this.oidc_client, finished);
+      _this.on('oidc_client_ready', function () {
+        completeRequest(args, _this.oidc_client, finished);
+      })
+    } else {
+      completeRequest(args, this.oidc_client, finished);
+    }
+  } catch (error) {
+    logger.error("", error);
   }
 };

@@ -1,3 +1,5 @@
 [
-  "openid-client@2.5.0"
+    "openid-client@2.5.0",
+    "winston",
+    "winston-daily-rotate-file"
 ]

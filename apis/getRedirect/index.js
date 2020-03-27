@@ -27,42 +27,47 @@
   25 March 2019
 
 */
+const { logger } = require("../../logger");
 
 module.exports = function(args, finished) {
+  try {
 
-  var validJWT;
-  if (args.req.headers.authorization) {
-    var fin = function(obj) {
-      // dummy function to allow us to validate the JWT without finishing
-      //  the replacement function simply logs any JWT errors to the console / log
-      console.log('JWT Authorization header error:');
-      console.log(JSON.stringify(obj));
-    };
+    var validJWT;
+    if (args.req.headers.authorization) {
+      var fin = function(obj) {
+        // dummy function to allow us to validate the JWT without finishing
+        //  the replacement function simply logs any JWT errors to the console / log
+        console.log('JWT Authorization header error:');
+        console.log(JSON.stringify(obj));
+      };
 
-    validJWT = this.jwt.handlers.validateRestRequest.call(this, args.req, fin, true, true);
+      validJWT = this.jwt.handlers.validateRestRequest.call(this, args.req, fin, true, true);
 
-    if (validJWT) {
-      return finished({
-        authenticated: true
+      if (validJWT) {
+        return finished({
+          authenticated: true
+        });
+      }
+    }
+
+    // either no JWT authorisation header was present at all,
+    //  or the JWT was invalid or expired, so tell PulseTile to redirect to OIDC server
+    args.session.authenticated = false;
+    if (!this.oidc_client.isReady) {
+      var _this = this;
+      this.on('oidc_client_ready', function() {
+        
+        finished({
+          redirectURL: _this.oidc_client.getRedirectURL()
+        });
       });
     }
-  }
-
-  // either no JWT authorisation header was present at all,
-  //  or the JWT was invalid or expired, so tell PulseTile to redirect to OIDC server
-  args.session.authenticated = false;
-  if (!this.oidc_client.isReady) {
-    var _this = this;
-    this.on('oidc_client_ready', function() {
-      
+    else {
       finished({
-        redirectURL: _this.oidc_client.getRedirectURL()
+        redirectURL: this.oidc_client.getRedirectURL()
       });
-    });
-  }
-  else {
-    finished({
-      redirectURL: this.oidc_client.getRedirectURL()
-    });
+    }
+  } catch (error) {
+    logger.error("", error)
   }
 };

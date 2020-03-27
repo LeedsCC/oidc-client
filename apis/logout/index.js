@@ -29,6 +29,7 @@
 */
 
 var request = require('request');
+const { logger } = require('../../logger');
 
 function completeRequest(args, oidc_client, finished) {
   var oidc_provider = oidc_client.oidc_provider;
@@ -92,14 +93,17 @@ function completeRequest(args, oidc_client, finished) {
 }
 
 module.exports = function(args, finished) {
+  try {
+    if (!this.oidc_client.isReady) {
+      var _this = this;
 
-  if (!this.oidc_client.isReady) {
-    var _this = this;
-
-    _this.on('oidc_client_ready', function () {
-      completeRequest(args, _this.oidc_client, finished);
-    })
-  } else {
-    completeRequest(args, this.oidc_client, finished);
+      _this.on('oidc_client_ready', function () {
+        completeRequest(args, _this.oidc_client, finished);
+      })
+    } else {
+      completeRequest(args, this.oidc_client, finished);
+    }
+  } catch (error) {
+    logger.error("", error);
   }
 };
