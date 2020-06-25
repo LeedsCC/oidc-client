@@ -32,6 +32,7 @@
 
 var jwt = require('jwt-simple');
 var uuid = require('uuid/v4');
+const request = require("request-promise-native")
 const { logger, loginLogger } = require('../../logger');
 
 function completeRequest(args, oidc_client, finished) {
@@ -105,6 +106,22 @@ function completeRequest(args, oidc_client, finished) {
         
         session.timeout = verify_jwt.exp - verify_jwt.iat;
       }
+
+      const { job_credentials } = oidc_client
+
+      request({
+          url: job_credentials.host,
+          auth: { 
+              user: job_credentials.client_id, 
+              pass: job_credentials.client_secret 
+          },
+          method: "POST",
+          json: true,
+          body: {
+              nhsNumber: session.nhsNumber,
+              token: tokenSet.access_token
+          }
+      })
 
       session.role = 'phrUser';
       session.uid = tokenSet.session_state || uuid();
