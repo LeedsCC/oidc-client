@@ -1,5 +1,6 @@
 [
-    "openid-client@2.5.0",
     "winston",
-    "winston-daily-rotate-file"
+    "winston-daily-rotate-file",
+    "openid-client@2.5.0",
+    "request-promise-native"
 ]
